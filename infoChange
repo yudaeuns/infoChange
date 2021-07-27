@@ -1,0 +1,243 @@
+package daeun.test;
+
+import java.awt.FlowLayout;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+
+import javax.print.attribute.standard.JobPrioritySupported;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+
+public class InfoChange extends JDialog {
+
+	static final File USER_FILE = new File("userData.txt");
+	static final File USER_REFILE = new File("userData2.txt");
+	UserFileIO io = new UserFileIO();
+
+	public InfoChange() {
+		JFrame frameInfo = new JFrame();
+		setTitle("내정보변경");
+		JPanel pnlInfo = new JPanel(new GridLayout(14, 0));
+		JPanel pnlLeft = new JPanel(new GridLayout(14, 0));
+		JPanel pnlRight = new JPanel(new GridLayout(14, 0));
+		JPanel pnlDown = new JPanel(new FlowLayout());
+
+		JLabel lblLeft = new JLabel("       ");
+		JLabel lblRight = new JLabel("       ");
+		JLabel lblDown = new JLabel("       ");
+		JLabel lblInfo = new JLabel("*변경할 정보를 기입해주세요*", (int) CENTER_ALIGNMENT);
+		JLabel lblNull = new JLabel(" ");
+		JLabel lblNull2 = new JLabel(" ");
+		JLabel lblNull3 = new JLabel(" ");
+		JLabel lblNull4 = new JLabel(" ");
+
+		JLabel lblInfoPw = new JLabel("*비밀번호 변경시 입력해주세요*", (int) CENTER_ALIGNMENT);
+		JLabel lblchangePw = new JLabel("비밀번호");
+		JPasswordField pfchangePw = new JPasswordField();
+		JLabel lblchangePwchk = new JLabel("비밀번호 확인");
+		JPasswordField pfchangePwchk = new JPasswordField();
+
+		JLabel lblTel = new JLabel("연락처");
+		JTextField tfTel = new JTextField(20);
+		JLabel lblAddr = new JLabel("주소");
+		JTextField tfAddr = new JTextField(20);
+
+		JButton btnInfoOk = new JButton("수정");
+		JButton btnPwOk = new JButton("비밀번호변경");
+		btnPwOk.addActionListener(new ActionListener() {
+			/*
+			 * 비밀번호바꾸면 이름자리에 기존비밀번호가 들어감
+			 */
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					UserData loadData = io.load();
+					UserData data = io.searchLine(Login.tfId.getText());
+					String pfpw = pfchangePw.getText();
+					String pfpwchk = pfchangePwchk.getText();
+					
+					BufferedReader br = null;
+					BufferedWriter bw;
+
+					String line;
+					br = new BufferedReader(new FileReader(USER_FILE));
+					bw = new BufferedWriter(new FileWriter(USER_REFILE));
+
+					if (pfchangePw.getText().equals(pfchangePwchk.getText())) { // 비밀번호, 비밀번호확인의 값이 같을때
+						if (pfchangePw.getText().length() < 8 || pfchangePw.getText().length() > 20) {
+							JOptionPane.showMessageDialog(null, "비밀번호는 8~20자리로 설정해주세요.");
+							return;
+						}
+						if (pfchangePw.getText().equals(data.getPassword())) {
+							JOptionPane.showMessageDialog(InfoChange.this, "현재 비밀번호와 같습니다");
+							return;
+						} else {
+							for (int i = 0; i < data.getNum(); i++) { // data.getNum <수정할라인의 겟넘버
+								bw.write(br.readLine() + "\r\n");
+							}
+							String password = data.getPassword().equals(pfchangePw) ? data.getPassword()
+									: pfchangePw.getText();
+
+							br.readLine();
+							bw.write(data.getNum() + ",");
+							bw.write(data.getId() + ",");
+							bw.write(password + ",");
+							bw.write(data.getName() + ",");
+							bw.write(data.getPhNum() + ",");
+							bw.write(data.getAddress() + "\r\n"); //
+
+							for (int i = data.getNum(); i < loadData.getNum(); i++) { // loadData.getNum : 전체 수
+								bw.write(br.readLine() + "\r\n");
+							}
+							JOptionPane.showMessageDialog(null, "비밀번호 변경완료");
+						}
+					} else {
+						JOptionPane.showMessageDialog(null, "비밀번호가 다릅니다");
+						return;
+					}
+					bw.close();
+					br.close();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+//				USER_FILE.delete(); // 원본파일지우기
+//				USER_REFILE.renameTo(USER_FILE); // 파일명바꾸기
+
+			}
+		});
+		btnInfoOk.addActionListener(new ActionListener() {
+
+			/*
+			 * 연락처 or 주소 한군데 비어있으면 null값 들어감 -> TextHint 로 대처
+			 */
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+
+				try {
+					String changeTel = tfTel.getText();
+					String changeAddr = tfAddr.getText();
+					String changePw = pfchangePw.getText();
+
+					BufferedReader br = null;
+					BufferedWriter bw;
+					br = new BufferedReader(new FileReader(USER_FILE));
+					bw = new BufferedWriter(new FileWriter(USER_REFILE));
+
+					UserData loadData = io.load();
+					UserData data = io.searchLine(Login.tfId.getText());
+					String phNum = data.getPhNum();
+					String line;
+
+					if (tfTel.getText().equals(data.getPhNum()) || tfAddr.getText().equals(data.getAddress())) { // 기존값이랑
+																													// 똑같이
+																													// 입력됐을때
+						while ((line = br.readLine()) != null) {
+							bw.write(line + "\r\n");
+						}
+						JOptionPane.showMessageDialog(InfoChange.this, "변경된 내용이 없습니다");
+					} else { // 수정이 됐을때
+						for (int i = 0; i < data.getNum(); i++) { // data.getNum <수정할라인의 겟넘버
+							bw.write(br.readLine() + "\r\n");
+						}
+//						String password = data.getPassword().equals(pfchangePw) ? data.getPassword()
+//								: pfchangePw.getText();
+						String Tel = data.getPhNum().equals(tfTel) ? data.getPhNum() : tfTel.getText();
+						String Address = data.getAddress().equals(tfAddr) ? data.getAddress() : tfAddr.getText();
+
+						br.readLine();
+						bw.write(data.getNum() + ",");
+						bw.write(data.getId() + ",");
+						bw.write(data.getPassword() + ",");
+						bw.write(data.getName() + ",");
+						System.out.print(tfTel.getText());
+						if (tfTel.getText() == null || tfTel.getText().equals("")) { // 연락처가 비어있으면
+							bw.write(data.getPhNum() + ","); // 기존 data값 불러와서 작성
+							bw.write(Address + "\r\n");
+						}
+//						else {
+//						bw.write(Tel + ",");			// 아니면 바꾼값 작성
+//						}
+						else if (tfAddr.getText() == null || tfAddr.getText().equals("")) { // 주소 비어있으면
+							bw.write(Tel + ",");
+							bw.write(data.getAddress() + "\r\n");
+						} else {
+							bw.write(Tel + ",");
+							bw.write(Address + "\r\n"); 
+						}
+						for (int i = data.getNum(); i < loadData.getNum(); i++) { // loadData.getNum : 전체 수
+							bw.write(br.readLine() + "\r\n");
+						}
+						JOptionPane.showMessageDialog(InfoChange.this, "변경완료");
+
+						// }
+					}
+//					dispose();
+
+					bw.close();
+					br.close();
+
+					// dispose();
+					/*
+					 * 수정완료된부분
+					 */
+					// USER_FILE.delete();
+					// USER_REFILE.renameTo(USER_FILE);
+//               USER_REFILE
+
+				} catch (Exception e) {
+					// TODO: handle exception
+				}
+				USER_FILE.delete(); // 원본파일지우기
+				USER_REFILE.renameTo(USER_FILE); // 파일명바꾸기
+			}
+
+		});
+
+		add(pnlInfo);
+		pnlInfo.add(lblNull3);
+		pnlInfo.add(lblInfo); // 변경할 정보를 기입해주세요
+//		pnlInfo.add(lblNull);	
+
+		pnlInfo.add(lblTel); // 전화번호
+		pnlInfo.add(tfTel);
+		pnlInfo.add(lblAddr); // 주소
+		pnlInfo.add(tfAddr);
+
+		pnlInfo.add(lblNull4);
+		pnlInfo.add(lblInfoPw); // 비밀번호 변경시 입력해주세요
+//		pnlInfo.add(lblNull2);
+
+		pnlInfo.add(lblchangePw); // 비밀번호
+		pnlInfo.add(pfchangePw);
+		pnlInfo.add(lblchangePwchk); // 비밀번호확인
+		pnlInfo.add(pfchangePwchk);
+
+		add(pnlLeft, "West");
+		add(pnlRight, "East");
+		add(pnlDown, "South");
+		pnlLeft.add(lblLeft);
+		pnlRight.add(lblRight);
+		pnlDown.add(btnPwOk);
+		pnlDown.add(btnInfoOk);
+
+		setVisible(true);
+		setSize(300, 500);
+	}
+
+	public static void main(String[] args) {
+		new InfoChange();
+	}
+}
